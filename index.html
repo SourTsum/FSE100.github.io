@@ -54,7 +54,7 @@
 
     for (let i = 0; i < buttonNames.length; i++) {
       let btn = createButton(buttonNames[i]);
-      btn.position((width - 370) / 2 + 57, 250 + (47 * i));
+      btn.position((windowWidth- 834)/2 + 66,(windowHeight - 445)/ 2 + i * 48 + 156);
       btn.size(370, 33);
       btn.mousePressed(buttonCallbacks[i]);
       btn.style('opacity', '0');
