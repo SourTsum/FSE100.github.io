@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.0/lib/p5.min.js"></script>
+</head>
+<body>
+</body>
+</html>
+<script>
+  let roomIMGS = [];
+  let currentRoom = 'main-menu';
+  let buttons = [];
+  let backBTN;
+
+  // Player variables
+  let playerPOS = [25, 0];
+  let playerVelX = 0;
+  let playerVelY = 0;
+  let gravity = 0.6;
+  let jumpStrength = -12;
+  let moveSpeed = 5;
+  let isJumping = false;
+  let isMovingLeft = false;
+  let isMovingRight = false;
+  let playerHealth = 100; // Player health
+  let lastAttackTime = 0; // Track last attack time
+  let playerScore = 0;
+  const attackCooldown = 500; // Debounce time in milliseconds
+
+  let kendrickSheet;
+  let drakeSheet;
+
+  // Animation variables for player
+  let idleFrame = 0;
+  let idleFrameCount = 0;
+  const idleFrameInterval = 10;
+  let isFlipped = false;
+  let isAttacking = false;
+  let attackFrames = [];
+  let attackFrameIndex = 0;
+  let attackFrameCount = 0;
+  const attackFrameInterval = 5;
+
+  // NPC variables
+  let npc;
+  let npcDamage = 8;
+
+  // NPC health
+  let npcHealth = 100;
+
+  function setupMainMenu() {
+    let buttonNames = ['Start Game', 'Leaderboard', 'Controls', 'Exit Game'];
+    let buttonCallbacks = [startGame, showLeaderboard, showControls, exitGame];
+
+    for (let i = 0; i < buttonNames.length; i++) {
+      let btn = createButton(buttonNames[i]);
+      btn.position((width - 370) / 2 + 57, 250 + (47 * i));
+      btn.size(370, 33);
+      btn.mousePressed(buttonCallbacks[i]);
+      btn.style('opacity', '0');
+      btn.style('pointer-events', 'auto');
+      buttons.push(btn);
+    }
+  }
+
+
+
+  function showControls() {
+    console.log("Showing controls...");
+    currentRoom = 'controls-menu';
+
+    backBTN = createButton('backBTN');
+    backBTN.mousePressed(hideControls);
+    backBTN.position(327,118);
+    backBTN.size(85, 50);
+    backBTN.style('opacity', '0');
+    backBTN.style('pointer-events', 'auto');
+
+    hideButtons();
+  }
+
+  function hideControls(){
+    backBTN.hide();
+    showButtons();
+    currentRoom = 'main-menu';
+  }
+
+  function controlsMenu() {
+    image(roomIMGS[2], 0, 0, 834, 445);
+  }
+
+  function exitGame() {
+    console.log("Exiting the game...");
+    // Implement exit logic
+  }
+
+
+  function showLeaderboard() {
+    console.log("Showing leaderboard...");
+    // Implement leaderboard logic
+  }
+
+  function startGame() {
+    console.log("Starting the game...");
+    hideButtons();
+    clear();
+    currentRoom = 'main-game';
+
+    // Initialize NPC
+    npc = new NPC(width - 100, height * 3 / 4 - 120);
+  }
+
+  function mainGame() {
+    if(npcHealth === 0){
+      playerHealth = 100;
+      npcHealth = 100; npc.health = 100;
+      playerScore+= 1;
+      playerPOS = [25,0];
+      npcDamage += 2;
+      npc.pos = createVector(width - 100, height * 3 / 4 - 120);
+    }
+
+    if(playerHealth === 0){
+      //   Do Leaderboard Things
+      playerScore = 0;
+      npcHealth = 100;
+      playerHealth = 100;
+      playerPOS = [25,0];
+      showButtons();
+      currentRoom = 'main-menu';
+    }
+
+    image(roomIMGS[1], 0, 0, 834, 445);
+
+    fill(0);
+    textSize(25);
+    text(playerScore,width/2, 10, 10, 50);
+
+    // Apply gravity to the player
+    playerVelY += gravity;
+    playerPOS[1] += playerVelY;
+
+    // Move the player horizontally
+    if (isMovingLeft) {
+      playerVelX = -moveSpeed;
+      isFlipped = true;
+    } else if (isMovingRight) {
+      playerVelX = moveSpeed;
+      isFlipped = false;
+    } else {
+      playerVelX = 0;
+    }
+    playerPOS[0] += playerVelX;
+    playerPOS[0] = constrain(playerPOS[0], 0, width - 64);
+
+    // Idle animation frames when not attacking
+    if (!isAttacking) {
+      idleFrameCount++;
+      if (idleFrameCount >= idleFrameInterval) {
+        idleFrame = (idleFrame + 1) % 7;
+        idleFrameCount = 0;
+      }
+    }
+
+    // Check if the player is on the ground
+    let groundLevel = height * 3 / 4 - 120;
+    if (playerPOS[1] >= groundLevel) {
+      playerPOS[1] = groundLevel;
+      playerVelY = 0;
+      isJumping = false;
+    }
+
+    // Draw the player
+    let spriteX;
+    if (isAttacking) {
+      attackFrameCount++;
+      if (attackFrameCount >= attackFrameInterval) {
+        attackFrameIndex++;
+        attackFrameCount = 0;
+      }
+      if (attackFrameIndex >= attackFrames.length) {
+        isAttacking = false;
+        attackFrameIndex = 0;
+      } else {
+        spriteX = attackFrames[attackFrameIndex] * 64;
+      }
+    } else {
+      spriteX = idleFrame * 64;
+    }
+
+    push();
+    translate(playerPOS[0], playerPOS[1]);
+    if (isFlipped) {
+      scale(-1, 1);
+      image(kendrickSheet.get(spriteX, 0, 64, 64), -64, 0, 128, 128);
+    } else {
+      image(kendrickSheet.get(spriteX, 0, 64, 64), 0, 0, 128, 128);
+    }
+    pop();
+
+    npc.update();
+    npc.draw();
+
+    drawHealthBars(); // Call to draw health bars
+  }
+
+  function drawHealthBars() {
+    // Draw player health bar
+    fill(255, 0, 0);
+    rect(10, 10, 200, 20); // Background bar
+    fill(0, 255, 0);
+    rect(10, 10, playerHealth * 2, 20); // Health portion
+
+    // Draw NPC health bar
+    fill(255, 0, 0);
+    rect(width - 210, 10, 200, 20); // Background bar
+    fill(0, 255, 0);
+    rect(width - 210, 10, npcHealth * 2, 20); // Health portion
+  }
+
+  class NPC {
+    constructor(x, y) {
+      this.pos = createVector(x, y);
+      this.vel = createVector(0, 0);
+      this.gravity = 0.6;
+      this.jumpStrength = -10;
+      this.isFlipped = true;
+      this.isAttacking = false;
+      this.attackFrames = [];
+      this.attackFrameIndex = 0;
+      this.attackFrameCount = 0;
+      this.attackFrameInterval = 5;
+      this.attackRange = 85;
+      this.jumpCooldown = 0;
+      this.nextJumpTime = this.randomJumpTime();
+      this.width = 64; // Define NPC width for collision
+      this.height = 128; // Define NPC height for collision
+    }
+
+    update() {
+      const distanceToPlayer = dist(this.pos.x, this.pos.y, playerPOS[0], playerPOS[1]);
+
+      if (distanceToPlayer > this.attackRange) {
+        this.isFlipped = this.pos.x > playerPOS[0];
+        this.vel.x = this.pos.x > playerPOS[0] ? -2 : 2;
+      } else {
+        this.vel.x = 0;
+        if (!this.isAttacking && this.isFacingPlayer()) {
+          this.isAttacking = true;
+          this.attackFrames = chooseRandomAttackFrames();
+          this.attackFrameIndex = 0;
+        }
+      }
+
+      this.vel.y += this.gravity;
+      this.pos.add(this.vel);
+
+      let groundLevel = height * 3 / 4 - 120;
+      if (this.pos.y > groundLevel) {
+        this.pos.y = groundLevel;
+        this.vel.y = 0;
+        if (this.jumpCooldown <= 0) {
+          this.jump();
+          this.nextJumpTime = this.randomJumpTime();
+        }
+      }
+
+      if (this.isAttacking) {
+        this.attackFrameCount++;
+        if (this.attackFrameCount >= this.attackFrameInterval) {
+          this.attackFrameIndex++;
+          this.attackFrameCount = 0;
+        }
+        if (this.attackFrameIndex >= this.attackFrames.length) {
+          this.isAttacking = false;
+          this.attackFrameIndex = 0;
+        }
+      }
+
+      this.jumpCooldown--;
+      this.handleCollision();
+    }
+
+    jump() {
+      this.vel.y = this.jumpStrength;
+      this.jumpCooldown = this.nextJumpTime;
+    }
+
+    randomJumpTime() {
+      return Math.floor(Math.random() * 180) + 120;
+    }
+
+    isFacingPlayer() {
+      return (this.isFlipped && this.pos.x > playerPOS[0]) || (!this.isFlipped && this.pos.x < playerPOS[0]);
+    }
+
+    draw() {
+      let spriteX = this.isAttacking ? this.attackFrames[this.attackFrameIndex] * 64 : 0;
+
+      push();
+      translate(this.pos.x, this.pos.y);
+      if (this.isFlipped) {
+        scale(-1, 1);
+        image(drakeSheet.get(spriteX, 0, 64, 64), -64, 0, 128, 128);
+      } else {
+        image(drakeSheet.get(spriteX, 0, 64, 64), 0, 0, 128, 128);
+      }
+      pop();
+    }
+
+    // Check collision with the player and prevent overlap
+    handleCollision() {
+      const playerWidth = 64;
+      const playerHeight = 25;
+
+      // Check if player and NPC rectangles overlap
+      if (
+              playerPOS[0] < this.pos.x + this.width &&
+              playerPOS[0] + playerWidth > this.pos.x &&
+              playerPOS[1] < this.pos.y + this.height &&
+              playerPOS[1] + playerHeight > this.pos.y
+      ) {
+        // Adjust player's position based on collision side
+        if (playerPOS[0] < this.pos.x) {
+          playerPOS[0] = this.pos.x - playerWidth; // Push player to the left of NPC
+        } else {
+          playerPOS[0] = this.pos.x + this.width; // Push player to the right of NPC
+        }
+
+        // Reduce NPC health when player attacks
+        if (isAttacking) {
+          let currentTime = millis();
+          if (currentTime - lastAttackTime >= attackCooldown) {
+            npcHealth = max(npcHealth - 10, 0);
+            if(npcHealth === 0){
+
+            }
+            lastAttackTime = currentTime;
+          }
+        }
+
+        // Reduce player health when colliding with attacking NPC facing the player
+        if (this.isAttacking && this.isFacingPlayer()) {
+          let currentTime = millis();
+          if (currentTime - lastAttackTime >= attackCooldown) {
+            playerHealth = max(playerHealth - npcDamage, 0); // Reduce player health by 5
+            lastAttackTime = currentTime;
+          }
+        }
+
+        // Prevent downward movement when the player is landing on the NPC
+        if (playerPOS[1] + playerHeight >= this.pos.y && playerPOS[1] < this.pos.y) {
+          playerPOS[1] = this.pos.y - playerHeight;
+          playerVelY = 0;
+          isJumping = false;
+        }
+      }
+    }
+
+
+
+  }
+
+  function hideButtons() {
+    buttons.forEach(btn => btn.hide());
+  }
+  function showButtons() {
+    buttons.forEach(btn => btn.show());
+  }
+
+  function mainMenu() {
+    image(roomIMGS[0], 0, 0);
+  }
+
+  function chooseRandomAttackFrames() {
+    let randomChoice = Math.floor(Math.random() * 3);
+    if (randomChoice === 0) return [7, 8, 9];
+    if (randomChoice === 1) return [10, 11, 12];
+    return [13, 14, 15, 16, 17, 18, 19];
+  }
+
+  function setup() {
+    cnv = createCanvas(834, 445);
+    cnv.position((windowWidth- 834)/2,(windowHeight - 445)/ 2);
+    background(50);
+    setupMainMenu();
+  }
+
+  function preload() {
+    roomIMGS[0] = loadImage('/assets/main-menu.png');
+    roomIMGS[1] = loadImage('/assets/game-background.png');
+    roomIMGS[2] = loadImage('/assets/controls-menu.png');
+    kendrickSheet = loadImage('/assets/kendrick_sheet.png');
+    drakeSheet = loadImage('/assets/drake_sheet.png');
+  }
+
+  function draw() {
+    clear();
+    if (currentRoom === 'main-menu') mainMenu();
+    if (currentRoom === 'main-game') mainGame();
+    if (currentRoom === 'controls-menu') controlsMenu();
+  }
+
+  function keyPressed() {
+    if (currentRoom === 'main-game') {
+      if (keyCode === UP_ARROW && !isJumping) {
+        playerVelY = jumpStrength;
+        isJumping = true;
+      }
+      if (keyCode === LEFT_ARROW) isMovingLeft = true;
+      if (keyCode === RIGHT_ARROW) isMovingRight = true;
+      if (key === ' ' && !isAttacking) {
+        isAttacking = true;
+        attackFrames = chooseRandomAttackFrames();
+        attackFrameIndex = 0;
+      }
+    }
+  }
+
+  function keyReleased() {
+    if (keyCode === LEFT_ARROW) isMovingLeft = false;
+    if (keyCode === RIGHT_ARROW) isMovingRight = false;
+  }
+</script>
