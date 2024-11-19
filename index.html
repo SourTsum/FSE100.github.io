@@ -1,16 +1,32 @@
 <!doctype html>
 <html lang="en">
+
+
 <head>
   <script src="https://cdn.jsdelivr.net/npm/p5@1.11.0/lib/p5.min.js"></script>
 </head>
+
+
 <body>
 </body>
+
+
 </html>
 <script>
   let roomIMGS = [];
   let currentRoom = 'main-menu';
+  let previousRoom = 'main-menu';
   let buttons = [];
   let backBTN;
+  const values = new Map();
+  let score = 0;
+
+
+  let homeButton2;
+  let textInputted = false;
+  let nameInput;
+  let name = '';
+
 
   // Player variables
   let playerPOS = [25, 0];
@@ -27,8 +43,10 @@
   let playerScore = 0;
   const attackCooldown = 500; // Debounce time in milliseconds
 
+
   let kendrickSheet;
   let drakeSheet;
+
 
   // Animation variables for player
   let idleFrame = 0;
@@ -41,20 +59,27 @@
   let attackFrameCount = 0;
   const attackFrameInterval = 5;
 
+
   // NPC variables
   let npc;
   let npcDamage = 8;
 
+
   // NPC health
   let npcHealth = 100;
 
+
   function setupMainMenu() {
     let buttonNames = ['Start Game', 'Leaderboard', 'Controls', 'Exit Game'];
-    let buttonCallbacks = [startGame, showLeaderboard, showControls, exitGame];
+    let buttonCallbacks = [startGame, () => {
+      hideButtons();
+      showLeaderboard();
+    }, showControls, exitGame];
+
 
     for (let i = 0; i < buttonNames.length; i++) {
       let btn = createButton(buttonNames[i]);
-      btn.position((windowWidth- 834)/2 + 66,(windowHeight - 445)/ 2 + i * 48 + 156);
+      btn.position((windowWidth - 834) / 2 + 66, (windowHeight - 445) / 2 + i * 48 + 156);
       btn.size(370, 33);
       btn.mousePressed(buttonCallbacks[i]);
       btn.style('opacity', '0');
@@ -65,39 +90,119 @@
 
 
 
+
+
+
   function showControls() {
     console.log("Showing controls...");
     currentRoom = 'controls-menu';
 
+
     backBTN = createButton('backBTN');
     backBTN.mousePressed(hideControls);
-    backBTN.position((windowWidth- 834)/2 + 105,(windowHeight - 445)/ 2 + 25);
-    backBTN.size(85, 50);
+    backBTN.position((windowWidth - 834) / 2 + 585, (windowHeight - 445) / 2 + 405);
+    backBTN.size(160, 30);
     backBTN.style('opacity', '0');
     backBTN.style('pointer-events', 'auto');
+
 
     hideButtons();
   }
 
-  function hideControls(){
+
+  function hideControls() {
     backBTN.hide();
     showButtons();
     currentRoom = 'main-menu';
   }
 
+
   function controlsMenu() {
     image(roomIMGS[2], 0, 0, 834, 445);
   }
 
+
   function exitGame() {
     console.log("Exiting the game...");
+    // Implement exit logic
   }
 
 
   function showLeaderboard() {
     console.log("Showing leaderboard...");
-    // Implement leaderboard logic
+    currentRoom = 'leaderboard';
   }
+
+
+
+
+  function Leaderboard() {
+    //currentRoom = 'leaderboard';
+
+
+    hideButtons();
+
+
+    // Ensure input and button are visible
+    if (previousRoom != 'main-menu' && textInputted == false) {
+      nameInput.show();
+    }
+
+
+    homeButton2.show();
+
+
+    // Display leaderboard text
+    background(255);
+    textSize(32);
+    text('Leaderboard', 110, 30);
+    textSize(16);
+    text('Name', 50, 50);
+    text('Score', 310, 50);
+
+
+    // Sort leaderboard and display top 5 entries
+    let sortedEntries = Array.from(values.entries()).sort((a, b) => b[1] - a[1]);
+    for (let i = 0; i < 5; i++) {
+      text(`${i + 1}.`, 20, 80 + i * 50);
+      rect(50, 55 + i * 50, 300, 30);
+
+
+
+
+      if (sortedEntries[i]) {
+        let [playerName, playerScore] = sortedEntries[i];
+        textSize(16);
+        fill(255, 255, 255);
+        text(playerName, 55, 75 + i * 50);
+        text(playerScore, 330, 75 + i * 50);
+      }
+      fill(0, 0, 0);
+    }
+
+
+
+
+    // Instructions for name input
+    textSize(18);
+    text('Enter your name:', 50, 350);
+
+
+
+
+
+
+  }
+
+
+  function HOME() {
+    showButtons();
+    homeButton2.hide();
+    nameInput.hide();
+    currentRoom = 'main-menu';
+    previousRoom = 'main-menu';
+  }
+
 
   function startGame() {
     console.log("Starting the game...");
@@ -105,39 +210,47 @@
     clear();
     currentRoom = 'main-game';
 
+
     // Initialize NPC
     npc = new NPC(width - 100, height * 3 / 4 - 120);
   }
 
+
   function mainGame() {
-    if(npcHealth === 0){
+    if (npcHealth === 0) {
       playerHealth = 100;
       npcHealth = 100; npc.health = 100;
-      playerScore+= 1;
-      playerPOS = [25,0];
+      playerScore += 1;
+      playerPOS = [25, 0];
       npcDamage += 2;
       npc.pos = createVector(width - 100, height * 3 / 4 - 120);
     }
 
-    if(playerHealth === 0){
-      //   Do Leaderboard Things
+
+    if (playerHealth === 0) {
+      score = playerScore;
       playerScore = 0;
       npcHealth = 100;
       playerHealth = 100;
-      playerPOS = [25,0];
+      playerPOS = [25, 0];
       showButtons();
-      currentRoom = 'main-menu';
+      previousRoom = 'main-game';
+      currentRoom = 'leaderboard';
     }
+
 
     image(roomIMGS[1], 0, 0, 834, 445);
 
+
     fill(0);
     textSize(25);
-    text(playerScore,width/2, 10, 10, 50);
+    text(playerScore, width / 2, 10, 10, 50);
+
 
     // Apply gravity to the player
     playerVelY += gravity;
     playerPOS[1] += playerVelY;
+
 
     // Move the player horizontally
     if (isMovingLeft) {
@@ -152,6 +265,7 @@
     playerPOS[0] += playerVelX;
     playerPOS[0] = constrain(playerPOS[0], 0, width - 64);
 
+
     // Idle animation frames when not attacking
     if (!isAttacking) {
       idleFrameCount++;
@@ -161,6 +275,7 @@
       }
     }
 
+
     // Check if the player is on the ground
     let groundLevel = height * 3 / 4 - 120;
     if (playerPOS[1] >= groundLevel) {
@@ -168,6 +283,7 @@
       playerVelY = 0;
       isJumping = false;
     }
+
 
     // Draw the player
     let spriteX;
@@ -187,6 +303,7 @@
       spriteX = idleFrame * 64;
     }
 
+
     push();
     translate(playerPOS[0], playerPOS[1]);
     if (isFlipped) {
@@ -197,11 +314,14 @@
     }
     pop();
 
+
     npc.update();
     npc.draw();
 
+
     drawHealthBars(); // Call to draw health bars
   }
+
 
   function drawHealthBars() {
     // Draw player health bar
@@ -210,12 +330,14 @@
     fill(0, 255, 0);
     rect(10, 10, playerHealth * 2, 20); // Health portion
 
+
     // Draw NPC health bar
     fill(255, 0, 0);
     rect(width - 210, 10, 200, 20); // Background bar
     fill(0, 255, 0);
     rect(width - 210, 10, npcHealth * 2, 20); // Health portion
   }
+
 
   class NPC {
     constructor(x, y) {
@@ -236,8 +358,10 @@
       this.height = 128; // Define NPC height for collision
     }
 
+
     update() {
       const distanceToPlayer = dist(this.pos.x, this.pos.y, playerPOS[0], playerPOS[1]);
+
 
       if (distanceToPlayer > this.attackRange) {
         this.isFlipped = this.pos.x > playerPOS[0];
@@ -251,8 +375,10 @@
         }
       }
 
+
       this.vel.y += this.gravity;
       this.pos.add(this.vel);
+
 
       let groundLevel = height * 3 / 4 - 120;
       if (this.pos.y > groundLevel) {
@@ -263,6 +389,7 @@
           this.nextJumpTime = this.randomJumpTime();
         }
       }
+
 
       if (this.isAttacking) {
         this.attackFrameCount++;
@@ -276,25 +403,31 @@
         }
       }
 
+
       this.jumpCooldown--;
       this.handleCollision();
     }
+
 
     jump() {
       this.vel.y = this.jumpStrength;
       this.jumpCooldown = this.nextJumpTime;
     }
 
+
     randomJumpTime() {
       return Math.floor(Math.random() * 180) + 120;
     }
+
 
     isFacingPlayer() {
       return (this.isFlipped && this.pos.x > playerPOS[0]) || (!this.isFlipped && this.pos.x < playerPOS[0]);
     }
 
+
     draw() {
       let spriteX = this.isAttacking ? this.attackFrames[this.attackFrameIndex] * 64 : 0;
+
 
       push();
       translate(this.pos.x, this.pos.y);
@@ -307,10 +440,12 @@
       pop();
     }
 
+
     // Check collision with the player and prevent overlap
     handleCollision() {
       const playerWidth = 64;
       const playerHeight = 25;
+
 
       // Check if player and NPC rectangles overlap
       if (
@@ -326,17 +461,20 @@
           playerPOS[0] = this.pos.x + this.width; // Push player to the right of NPC
         }
 
+
         // Reduce NPC health when player attacks
         if (isAttacking) {
           let currentTime = millis();
           if (currentTime - lastAttackTime >= attackCooldown) {
             npcHealth = max(npcHealth - 10, 0);
-            if(npcHealth === 0){
+            if (npcHealth === 0) {
+
 
             }
             lastAttackTime = currentTime;
           }
         }
+
 
         // Reduce player health when colliding with attacking NPC facing the player
         if (this.isAttacking && this.isFacingPlayer()) {
@@ -346,6 +484,7 @@
             lastAttackTime = currentTime;
           }
         }
+
 
         // Prevent downward movement when the player is landing on the NPC
         if (playerPOS[1] + playerHeight >= this.pos.y && playerPOS[1] < this.pos.y) {
@@ -358,7 +497,11 @@
 
 
 
+
+
+
   }
+
 
   function hideButtons() {
     buttons.forEach(btn => btn.hide());
@@ -367,9 +510,12 @@
     buttons.forEach(btn => btn.show());
   }
 
+
   function mainMenu() {
+    textInputted = false;
     image(roomIMGS[0], 0, 0);
   }
+
 
   function chooseRandomAttackFrames() {
     let randomChoice = Math.floor(Math.random() * 3);
@@ -378,27 +524,51 @@
     return [13, 14, 15, 16, 17, 18, 19];
   }
 
+
   function setup() {
+    homeButton2 = createButton('Home');
+    homeButton2.position((windowWidth - 220) / 2 + 105, (windowHeight - 360 ) / 2 + 285);
+    homeButton2.size(200, 25);
+    homeButton2.hide();
+    homeButton2.mousePressed(HOME);
+
+
+    nameInput = createInput();
+    nameInput.position((windowWidth - 220) / 2, windowHeight - 360);
+    nameInput.size(200, 25);
+    nameInput.hide();
+    nameInput.changed(enterPressed);
+
+
+
+
     cnv = createCanvas(834, 445);
-    cnv.position((windowWidth- 834)/2,(windowHeight - 445)/ 2);
+    cnv.position((windowWidth - 834) / 2, (windowHeight - 445) / 2);
     background(50);
     setupMainMenu();
   }
 
+
   function preload() {
-    roomIMGS[0] = loadImage('main-menu.png');
-    roomIMGS[1] = loadImage('game-background.png');
-    roomIMGS[2] = loadImage('controls-menu.png');
-    kendrickSheet = loadImage('kendrick_sheet.png');
-    drakeSheet = loadImage('drake_sheet.png');
+    roomIMGS[0] = loadImage('/assets/main-menu.png');
+    roomIMGS[1] = loadImage('/assets/game-background.png');
+    roomIMGS[2] = loadImage('/assets/controls-menu.png');
+    kendrickSheet = loadImage('/assets/kendrick_sheet.png');
+    drakeSheet = loadImage('/assets/drake_sheet.png');
   }
+
 
   function draw() {
     clear();
     if (currentRoom === 'main-menu') mainMenu();
     if (currentRoom === 'main-game') mainGame();
     if (currentRoom === 'controls-menu') controlsMenu();
+    if (currentRoom === 'leaderboard') {
+      fill(0, 0, 0,);
+      Leaderboard();
+    }
   }
+
 
   function keyPressed() {
     if (currentRoom === 'main-game') {
@@ -416,8 +586,38 @@
     }
   }
 
+
   function keyReleased() {
     if (keyCode === LEFT_ARROW) isMovingLeft = false;
     if (keyCode === RIGHT_ARROW) isMovingRight = false;
   }
+
+
+
+
+  function enterPressed() {
+    name = nameInput.value().trim();
+
+
+    if (name) {
+      if (values.has(name) || name.length > 3) {
+        text("Name is taken or too long (3 character limit). Please try again.", 50, 375);
+        return;
+      }
+
+
+
+
+      values.set(name, score);
+      fill(255, 255, 255);
+      previousRoom = 'leaderboard';
+      nameInput.value('');
+      textInputted = true;
+      nameInput.hide(); // Hide the input box after submission
+      showLeaderboard();
+    }
+  }
 </script>
+
+
+
